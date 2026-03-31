@@ -9,7 +9,11 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
-class MetaAdsConfig(BaseSettings):
+class _EnvBase(BaseSettings):
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+
+
+class MetaAdsConfig(_EnvBase):
     meta_app_id: str = ""
     meta_app_secret: str = ""
     meta_access_token: str = ""
@@ -23,7 +27,7 @@ class MetaAdsConfig(BaseSettings):
         return v
 
 
-class GoogleAdsConfig(BaseSettings):
+class GoogleAdsConfig(_EnvBase):
     google_ads_developer_token: str = ""
     google_ads_client_id: str = ""
     google_ads_client_secret: str = ""
@@ -39,7 +43,7 @@ class GoogleAdsConfig(BaseSettings):
         return v
 
 
-class NaverSAConfig(BaseSettings):
+class NaverSAConfig(_EnvBase):
     naver_sa_api_key: str = ""
     naver_sa_secret_key: str = ""
     naver_sa_customer_ids: list[str] = []
@@ -52,13 +56,13 @@ class NaverSAConfig(BaseSettings):
         return v
 
 
-class BigQueryConfig(BaseSettings):
+class BigQueryConfig(_EnvBase):
     bq_project_id: str = ""
     bq_dataset_id: str = "marketing_data"
     bq_credentials_path: str = "config/bigquery/service_account.json"
 
 
-class AlertConfig(BaseSettings):
+class AlertConfig(_EnvBase):
     slack_webhook_url: str = ""
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
@@ -67,14 +71,12 @@ class AlertConfig(BaseSettings):
     alert_email_to: str = ""
 
 
-class AppConfig(BaseSettings):
+class AppConfig(_EnvBase):
     timezone: str = "Asia/Seoul"
     log_level: str = "INFO"
     backfill_days: int = 7
     exchange_rate_api_key: str = ""
     ingest_api_key: str = ""
-
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 class Settings:
