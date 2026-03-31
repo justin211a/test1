@@ -1,4 +1,4 @@
-"""Alert notifications via Jandi webhook and email."""
+"""Alert notifications via Slack webhook and email."""
 
 from __future__ import annotations
 
@@ -14,46 +14,41 @@ from src.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-def send_jandi_message(title: str, body: str, color: str = "#FAC11B") -> bool:
-    """Send a message to Jandi via Incoming Webhook.
+def send_slack_message(title: str, body: str, color: str = "#FAC11B") -> bool:
+    """Send a message to Slack via Incoming Webhook.
 
     Args:
         title: Message title.
         body: Message body (supports markdown).
-        color: Sidebar color. Green=#2ECC71, Red=#E74C3C, Yellow=#FAC11B.
+        color: Attachment sidebar color. Green=#2ECC71, Red=#E74C3C, Yellow=#FAC11B.
 
     Returns:
         True if sent successfully, False otherwise.
     """
     settings = get_settings()
-    webhook_url = settings.alert.jandi_webhook_url
+    webhook_url = settings.alert.slack_webhook_url
     if not webhook_url:
-        logger.warning("Jandi webhook URL not configured. Skipping notification.")
+        logger.warning("Slack webhook URL not configured. Skipping notification.")
         return False
 
     payload = {
-        "body": title,
-        "connectColor": color,
-        "connectInfo": [
+        "attachments": [
             {
-                "title": "상세 내용",
-                "description": body,
+                "color": color,
+                "title": title,
+                "text": body,
+                "mrkdwn_in": ["text"],
             }
         ],
     }
 
     try:
-        resp = requests.post(
-            webhook_url,
-            json=payload,
-            headers={"Accept": "application/vnd.tosslab.jandi-v2+json", "Content-Type": "application/json"},
-            timeout=10,
-        )
+        resp = requests.post(webhook_url, json=payload, timeout=10)
         resp.raise_for_status()
-        logger.info(f"Jandi notification sent: {title}")
+        logger.info(f"Slack notification sent: {title}")
         return True
     except Exception as e:
-        logger.error(f"Failed to send Jandi notification: {e}")
+        logger.error(f"Failed to send Slack notification: {e}")
         return False
 
 
@@ -95,8 +90,8 @@ def send_email_alert(subject: str, body: str) -> bool:
 # ──────────────────────────────────────────────
 
 def notify_pipeline_success(channel: str, date_range: str, rows_loaded: int):
-    """Notify successful pipeline completion (Jandi only)."""
-    send_jandi_message(
+    """Notify successful pipeline completion (Slack only)."""
+    send_slack_message(
         title=f"[성공] {channel} 데이터 수집 완료",
         body=f"기간: {date_range}\n적재 건수: {rows_loaded:,}건",
         color="#2ECC71",
@@ -104,25 +99,25 @@ def notify_pipeline_success(channel: str, date_range: str, rows_loaded: int):
 
 
 def notify_pipeline_failure(channel: str, date_range: str, error: str):
-    """Notify pipeline failure (Jandi + Email)."""
+    """Notify pipeline failure (Slack + Email)."""
     body = f"채널: {channel}\n기간: {date_range}\n에러: {error}"
-    send_jandi_message(title=f"[실패] {channel} 데이터 수집 실패", body=body, color="#E74C3C")
+    send_slack_message(title=f"[실패] {channel} 데이터 수집 실패", body=body, color="#E74C3C")
     send_email_alert(subject=f"{channel} 파이프라인 실패", body=body)
 
 
 def notify_token_expiry_warning(channel: str, days_remaining: int):
-    """Notify about upcoming token expiration (Jandi + Email)."""
+    """Notify about upcoming token expiration (Slack + Email)."""
     body = f"채널: {channel}\n토큰 만료까지 {days_remaining}일 남았습니다.\n빠른 갱신이 필요합니다."
-    send_jandi_message(title=f"[경고] {channel} 토큰 만료 임박", body=body, color="#E74C3C")
+    send_slack_message(title=f"[경고] {channel} 토큰 만료 임박", body=body, color="#E74C3C")
     send_email_alert(subject=f"{channel} 토큰 만료 경고 ({days_remaining}일 남음)", body=body)
 
 
 def notify_data_anomaly(channel: str, report_date: str, today_count: int, prev_count: int):
-    """Notify about abnormal data volume change (Jandi only)."""
+    """Notify about abnormal data volume change (Slack only)."""
     change_pct = ((today_count - prev_count) / prev_count * 100) if prev_count else 0
     body = (
         f"채널: {channel}\n날짜: {report_date}\n"
         f"금일: {today_count:,}건 / 전일: {prev_count:,}건\n"
         f"변동: {change_pct:+.1f}%"
     )
-    send_jandi_message(title=f"[이상감지] {channel} 데이터 건수 변동", body=body, color="#FAC11B")
+    send_slack_message(title=f"[이상감지] {channel} 데이터 건수 변동", body=body, color="#FAC11B")

@@ -59,7 +59,7 @@ class BigQueryConfig(BaseSettings):
 
 
 class AlertConfig(BaseSettings):
-    jandi_webhook_url: str = ""
+    slack_webhook_url: str = ""
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = ""
