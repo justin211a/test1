@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "GFA DATA 수집",
+  "version": "1.0.0",
+  "description": "네이버 GFA 성과형 디스플레이 광고 데이터를 자동으로 수집하여 BigQuery에 적재합니다.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://manage.searchad.naver.com/*",
+    "https://adcenter.naver.com/*",
+    "https://saedu.naver.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://manage.searchad.naver.com/*",
+        "https://adcenter.naver.com/*",
+        "https://saedu.naver.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
