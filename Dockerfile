@@ -15,5 +15,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ src/
 COPY scripts/ scripts/
 
-# Default: run the pipeline via CLI
-ENTRYPOINT ["python", "-m", "src.main"]
+# Cloud Run sets PORT env var. Uvicorn starts on that port.
+CMD ["python", "-c", "import uvicorn; from src.main import app; import os; uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))"]
