@@ -1,4 +1,4 @@
-"""Generate Google Ads OAuth2 Refresh Token.
+"""Generate Google Ads OAuth2 Refresh Token using localhost redirect.
 
 Usage: python scripts/generate_google_refresh_token.py
 """
@@ -6,7 +6,44 @@ Usage: python scripts/generate_google_refresh_token.py
 import sys
 sys.path.insert(0, ".")
 
+import threading
+import urllib.parse
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+import requests
 from src.config import get_settings
+
+auth_code_result = {"code": None}
+
+
+class OAuthHandler(BaseHTTPRequestHandler):
+    """Catch the OAuth redirect and extract the authorization code."""
+
+    def do_GET(self):
+        query = urllib.parse.urlparse(self.path).query
+        params = urllib.parse.parse_qs(query)
+
+        if "code" in params:
+            auth_code_result["code"] = params["code"][0]
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(
+                "<html><body><h1>인증 성공!</h1>"
+                "<p>이 창을 닫아도 됩니다.</p></body></html>".encode("utf-8")
+            )
+        else:
+            self.send_response(400)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(
+                "<html><body><h1>인증 실패</h1>"
+                f"<p>{params}</p></body></html>".encode("utf-8")
+            )
+
+    def log_message(self, format, *args):
+        pass  # Suppress logs
+
 
 def main():
     settings = get_settings()
@@ -17,9 +54,8 @@ def main():
         print("Error: GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET must be set in .env")
         sys.exit(1)
 
-    # Step 1: Generate authorization URL
     scope = "https://www.googleapis.com/auth/adwords"
-    redirect_uri = "urn:ietf:wg:oauth:2.0:oob"  # For desktop/manual copy-paste flow
+    redirect_uri = "http://localhost:8090"
 
     auth_url = (
         "https://accounts.google.com/o/oauth2/auth"
@@ -35,26 +71,29 @@ def main():
     print("Google Ads OAuth2 Refresh Token 발급")
     print("=" * 60)
     print()
-    print("1. 아래 URL을 브라우저에서 열어주세요:")
+    print("브라우저에서 아래 URL을 열어주세요:")
     print()
     print(auth_url)
     print()
-    print("2. Google 계정으로 로그인하고 권한을 허용하세요.")
-    print("3. 화면에 나오는 인증 코드를 복사하세요.")
-    print()
+    print("로그인 후 자동으로 코드를 받습니다. 대기 중...")
 
-    auth_code = input("4. 인증 코드를 여기에 붙여넣기: ").strip()
+    # Start local server to catch redirect
+    server = HTTPServer(("localhost", 8090), OAuthHandler)
+    server.timeout = 300  # 5 min timeout
 
-    if not auth_code:
-        print("Error: 인증 코드가 비어있습니다.")
+    server.handle_request()
+
+    code = auth_code_result["code"]
+    if not code:
+        print("Error: 인증 코드를 받지 못했습니다.")
         sys.exit(1)
 
-    # Step 2: Exchange auth code for refresh token
-    import requests
+    print(f"\n인증 코드 수신 완료!")
 
+    # Exchange code for refresh token
     token_url = "https://oauth2.googleapis.com/token"
     data = {
-        "code": auth_code,
+        "code": code,
         "client_id": client_id,
         "client_secret": client_secret,
         "redirect_uri": redirect_uri,
