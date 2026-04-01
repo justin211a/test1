@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ src/
 COPY scripts/ scripts/
-COPY server.py .
 
-CMD ["python", "server.py"]
+EXPOSE 8080
+
+# Use shell form so $PORT env var is expanded at runtime
+CMD python -c "import uvicorn, os; from src.main import app; uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))"
