@@ -152,8 +152,8 @@ def serve(host: str, port: int):
 
 
 if __name__ == "__main__":
-    # If RUN_MODE=server, start HTTP server; otherwise run CLI
-    if os.environ.get("RUN_MODE") == "server":
+    # Cloud Run sets PORT env var automatically. If PORT is set, start HTTP server.
+    if os.environ.get("PORT") or os.environ.get("RUN_MODE") == "server":
         uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
     else:
         cli()
