@@ -27,9 +27,17 @@ STAT_FIELDS = [
 
 
 class NaverSAChannel(BaseChannel):
-    """Naver Search Ad extractor and transformer."""
+    """Naver Search Ad extractor and transformer.
+
+    Supports multiple account groups (different logins with different API keys).
+    """
 
     channel = Channel.NAVER_SA
+
+    def __init__(self, api_key: str = "", secret_key: str = ""):
+        super().__init__()
+        self._api_key = api_key
+        self._secret_key = secret_key
 
     @property
     def default_rate_limit(self) -> float:
@@ -43,7 +51,7 @@ class NaverSAChannel(BaseChannel):
     def _api_get(self, uri: str, customer_id: str, params: dict | None = None) -> list | dict:
         """Make GET request to Naver SA API."""
         self.rate_limiter.wait()
-        headers = get_naver_sa_headers("GET", uri, customer_id)
+        headers = get_naver_sa_headers("GET", uri, customer_id, self._api_key, self._secret_key)
         resp = requests.get(f"{NAVER_SA_BASE_URL}{uri}", headers=headers, params=params, timeout=30)
         resp.raise_for_status()
         return resp.json()
@@ -52,7 +60,7 @@ class NaverSAChannel(BaseChannel):
     def _api_post(self, uri: str, customer_id: str, body: dict) -> dict:
         """Make POST request to Naver SA API."""
         self.rate_limiter.wait()
-        headers = get_naver_sa_headers("POST", uri, customer_id)
+        headers = get_naver_sa_headers("POST", uri, customer_id, self._api_key, self._secret_key)
         resp = requests.post(f"{NAVER_SA_BASE_URL}{uri}", headers=headers, json=body, timeout=30)
         resp.raise_for_status()
         return resp.json()

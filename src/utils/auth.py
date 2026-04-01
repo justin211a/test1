@@ -19,21 +19,19 @@ logger = logging.getLogger(__name__)
 # Naver Search Ad HMAC-SHA256 Signature
 # ──────────────────────────────────────────────
 
-def generate_naver_sa_signature(timestamp: str, method: str, uri: str) -> str:
+def generate_naver_sa_signature(timestamp: str, method: str, uri: str, secret_key: str) -> str:
     """Generate HMAC-SHA256 signature for Naver Search Ad API.
 
     Args:
         timestamp: Unix timestamp in milliseconds (string).
         method: HTTP method (GET, POST, etc.).
         uri: API endpoint path (e.g., /ncc/campaigns).
+        secret_key: The secret key for this account group.
 
     Returns:
         Base64-encoded HMAC-SHA256 signature.
     """
     import base64
-
-    settings = get_settings()
-    secret_key = settings.naver_sa.naver_sa_secret_key
 
     message = f"{timestamp}.{method}.{uri}"
     signature = hmac.new(
@@ -45,15 +43,22 @@ def generate_naver_sa_signature(timestamp: str, method: str, uri: str) -> str:
     return base64.b64encode(signature).decode("utf-8")
 
 
-def get_naver_sa_headers(method: str, uri: str, customer_id: str) -> dict[str, str]:
-    """Build complete headers for Naver Search Ad API request."""
-    settings = get_settings()
+def get_naver_sa_headers(method: str, uri: str, customer_id: str, api_key: str, secret_key: str) -> dict[str, str]:
+    """Build complete headers for Naver Search Ad API request.
+
+    Args:
+        method: HTTP method.
+        uri: API endpoint path.
+        customer_id: Naver SA customer ID.
+        api_key: API key for this account group.
+        secret_key: Secret key for this account group.
+    """
     timestamp = str(int(time.time() * 1000))
-    signature = generate_naver_sa_signature(timestamp, method, uri)
+    signature = generate_naver_sa_signature(timestamp, method, uri, secret_key)
 
     return {
         "X-Timestamp": timestamp,
-        "X-API-KEY": settings.naver_sa.naver_sa_api_key,
+        "X-API-KEY": api_key,
         "X-Customer": customer_id,
         "X-Signature": signature,
         "Content-Type": "application/json; charset=UTF-8",

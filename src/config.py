@@ -43,17 +43,57 @@ class GoogleAdsConfig(_EnvBase):
         return v
 
 
-class NaverSAConfig(_EnvBase):
-    naver_sa_api_key: str = ""
-    naver_sa_secret_key: str = ""
-    naver_sa_customer_ids: list[str] = []
+class NaverSAAccountGroup(_EnvBase):
+    """One Naver SA login with its own API key/secret and customer IDs."""
 
-    @field_validator("naver_sa_customer_ids", mode="before")
+    api_key: str = ""
+    secret_key: str = ""
+    customer_ids: list[str] = []
+    label: str = ""  # e.g., "올뉴비타", "캘리초이스"
+
+    @field_validator("customer_ids", mode="before")
     @classmethod
     def parse_json_list(cls, v):
         if isinstance(v, str):
             return json.loads(v)
         return v
+
+
+class NaverSAConfig(_EnvBase):
+    """Supports multiple Naver SA account groups (different logins)."""
+
+    naver_sa_api_key: str = ""
+    naver_sa_secret_key: str = ""
+    naver_sa_customer_ids: list[str] = []
+    naver_sa_api_key_2: str = ""
+    naver_sa_secret_key_2: str = ""
+    naver_sa_customer_ids_2: list[str] = []
+
+    @field_validator("naver_sa_customer_ids", "naver_sa_customer_ids_2", mode="before")
+    @classmethod
+    def parse_json_list(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+    def get_account_groups(self) -> list[NaverSAAccountGroup]:
+        """Return list of configured account groups."""
+        groups = []
+        if self.naver_sa_api_key and self.naver_sa_customer_ids:
+            groups.append(NaverSAAccountGroup(
+                api_key=self.naver_sa_api_key,
+                secret_key=self.naver_sa_secret_key,
+                customer_ids=self.naver_sa_customer_ids,
+                label="group1",
+            ))
+        if self.naver_sa_api_key_2 and self.naver_sa_customer_ids_2:
+            groups.append(NaverSAAccountGroup(
+                api_key=self.naver_sa_api_key_2,
+                secret_key=self.naver_sa_secret_key_2,
+                customer_ids=self.naver_sa_customer_ids_2,
+                label="group2",
+            ))
+        return groups
 
 
 class BigQueryConfig(_EnvBase):

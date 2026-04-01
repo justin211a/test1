@@ -87,32 +87,47 @@ def run_channel(
     total_rows = 0
 
     try:
-        # Initialize channel
-        channel_cls = _get_channel_class(channel_name)
-        channel = channel_cls()
+        # Naver SA: special handling for multiple account groups (different logins)
+        if channel_name == "naver_sa":
+            from src.channels.naver_sa import NaverSAChannel
+            account_groups = get_settings().naver_sa.get_account_groups()
+            if not account_groups:
+                raise ValueError("No Naver SA account groups configured")
 
-        # Check token health
-        token_days = channel.check_token_health()
-        if token_days is not None and token_days <= 7:
-            notify_token_expiry_warning(channel_name, token_days)
+            for group in account_groups:
+                channel = NaverSAChannel(api_key=group.api_key, secret_key=group.secret_key)
+                for account_id in group.customer_ids:
+                    logger.info(f"Processing naver_sa account: {account_id} ({date_start} ~ {date_end})")
+                    records = channel.extract_and_transform(account_id, date_start, date_end)
+                    rows = loader.load_ad_performance(records, channel_name, date_start, date_end)
+                    total_rows += rows
+        else:
+            # All other channels: single credential set
+            channel_cls = _get_channel_class(channel_name)
+            channel = channel_cls()
 
-        # Process each account
-        account_ids = get_account_ids(channel_name)
-        if not account_ids and channel_name != "gfa":
-            raise ValueError(f"No account IDs configured for {channel_name}")
+            # Check token health
+            token_days = channel.check_token_health()
+            if token_days is not None and token_days <= 7:
+                notify_token_expiry_warning(channel_name, token_days)
 
-        for account_id in account_ids:
-            logger.info(f"Processing {channel_name} account: {account_id} ({date_start} ~ {date_end})")
-            records = channel.extract_and_transform(account_id, date_start, date_end)
-            rows = loader.load_ad_performance(records, channel_name, date_start, date_end)
-            total_rows += rows
+            # Process each account
+            account_ids = get_account_ids(channel_name)
+            if not account_ids and channel_name != "gfa":
+                raise ValueError(f"No account IDs configured for {channel_name}")
 
-            # Anomaly detection: compare with previous day
-            prev_count = loader.get_previous_day_count(channel_name, date_start)
-            if prev_count is not None and prev_count > 0:
-                change_ratio = abs(rows - prev_count) / prev_count
-                if change_ratio > 0.5:
-                    notify_data_anomaly(channel_name, date_start.isoformat(), rows, prev_count)
+            for account_id in account_ids:
+                logger.info(f"Processing {channel_name} account: {account_id} ({date_start} ~ {date_end})")
+                records = channel.extract_and_transform(account_id, date_start, date_end)
+                rows = loader.load_ad_performance(records, channel_name, date_start, date_end)
+                total_rows += rows
+
+                # Anomaly detection: compare with previous day
+                prev_count = loader.get_previous_day_count(channel_name, date_start)
+                if prev_count is not None and prev_count > 0:
+                    change_ratio = abs(rows - prev_count) / prev_count
+                    if change_ratio > 0.5:
+                        notify_data_anomaly(channel_name, date_start.isoformat(), rows, prev_count)
 
         # Success
         run.status = PipelineStatus.SUCCESS
