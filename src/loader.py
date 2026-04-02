@@ -60,10 +60,16 @@ class BigQueryLoader:
                 bigquery.ScalarQueryParameter("date_end", "DATE", date_end),
             ]
         )
-        result = self.client.query(query, job_config=job_config).result()
-        rows_deleted = result.num_dml_affected_rows or 0
-        logger.info(f"Deleted {rows_deleted} rows from {table_name} for {channel} ({date_start} ~ {date_end})")
-        return rows_deleted
+        try:
+            result = self.client.query(query, job_config=job_config).result()
+            rows_deleted = result.num_dml_affected_rows or 0
+            logger.info(f"Deleted {rows_deleted} rows from {table_name} for {channel} ({date_start} ~ {date_end})")
+            return rows_deleted
+        except Exception as e:
+            if "streaming buffer" in str(e):
+                logger.warning(f"Streaming buffer active, skipping delete for {channel} ({date_start} ~ {date_end})")
+                return 0
+            raise
 
     def load_ad_performance(
         self,
