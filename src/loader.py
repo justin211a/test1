@@ -110,6 +110,8 @@ class BigQueryLoader:
         for key, val in row.items():
             if hasattr(val, "value"):
                 row[key] = val.value
+            elif isinstance(val, (date, datetime)):
+                row[key] = val.isoformat()
 
         table_ref = self._table_ref(self.PIPELINE_RUNS_TABLE)
         errors = self.client.insert_rows_json(table_ref, [row])

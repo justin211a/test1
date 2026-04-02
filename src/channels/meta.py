@@ -58,22 +58,34 @@ class MetaChannel(BaseChannel):
     ) -> list[dict]:
         """Fetch ad set level insights from Meta Marketing API."""
         self.rate_limiter.wait()
-        account = AdAccount(account_id)
 
+        # Use direct REST API to avoid SDK parsing issues
+        import requests as req
+        settings = get_settings()
+        url = f"https://graph.facebook.com/v22.0/{account_id}/insights"
         params = {
-            "time_range": {
-                "since": date_start.isoformat(),
-                "until": date_end.isoformat(),
-            },
-            "level": "adset",  # Ad set = ad group equivalent
-            "time_increment": 1,  # Daily breakdown
+            "access_token": settings.meta.meta_access_token,
+            "time_range": json.dumps({"since": date_start.isoformat(), "until": date_end.isoformat()}),
+            "level": "adset",
+            "time_increment": "1",
+            "fields": ",".join([
+                "campaign_id", "campaign_name", "adset_id", "adset_name",
+                "impressions", "clicks", "spend", "actions", "action_values", "date_start",
+            ]),
+            "limit": "500",
         }
 
-        insights = account.get_insights(fields=INSIGHTS_FIELDS, params=params)
+        resp = req.get(url, params=params, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
 
-        results = []
-        for insight in insights:
-            results.append(dict(insight))
+        results = data.get("data", [])
+        # Handle pagination
+        while "paging" in data and "next" in data["paging"]:
+            resp = req.get(data["paging"]["next"], timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            results.extend(data.get("data", []))
 
         logger.info(f"Meta: fetched {len(results)} insight rows for {account_id}")
         return results
