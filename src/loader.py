@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import date, datetime
@@ -79,27 +80,27 @@ class BigQueryLoader:
         # Delete existing data (idempotency)
         self.delete_existing_data(self.AD_PERFORMANCE_TABLE, channel, date_start, date_end)
 
-        # Convert to DataFrame
+        # Convert to JSON-serializable rows
         rows = []
         for r in records:
             row = r.model_dump()
-            # Convert enums to string values
             for key, val in row.items():
                 if hasattr(val, "value"):
                     row[key] = val.value
+                elif isinstance(val, datetime):
+                    row[key] = val.isoformat()
+                elif isinstance(val, date):
+                    row[key] = val.isoformat()
+                elif isinstance(val, dict):
+                    row[key] = json.dumps(val, ensure_ascii=False, default=str)
             rows.append(row)
 
-        df = pd.DataFrame(rows)
-
-        # Load to BigQuery
+        # Load to BigQuery using JSON insert (avoids parquet type issues)
         table_ref = self._table_ref(self.AD_PERFORMANCE_TABLE)
-        job_config = bigquery.LoadJobConfig(
-            write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-            schema_update_options=[bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION],
-        )
-
-        job = self.client.load_table_from_dataframe(df, table_ref, job_config=job_config)
-        job.result()  # Wait for completion
+        errors = self.client.insert_rows_json(table_ref, rows)
+        if errors:
+            logger.error(f"BigQuery insert errors: {errors}")
+            raise RuntimeError(f"BigQuery insert failed: {errors}")
 
         logger.info(f"Loaded {len(records)} rows to {table_ref} for {channel}")
         return len(records)
