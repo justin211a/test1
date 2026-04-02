@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date, datetime
 
 import pandas as pd
@@ -23,13 +24,19 @@ class BigQueryLoader:
 
     def __init__(self):
         settings = get_settings()
-        credentials = service_account.Credentials.from_service_account_file(
-            settings.bigquery.bq_credentials_path
-        )
-        self.client = bigquery.Client(
-            project=settings.bigquery.bq_project_id,
-            credentials=credentials,
-        )
+        bq_creds_path = settings.bigquery.bq_credentials_path
+
+        # Cloud Run: use default credentials. Local: use service account file.
+        if bq_creds_path and os.path.exists(bq_creds_path):
+            credentials = service_account.Credentials.from_service_account_file(bq_creds_path)
+            self.client = bigquery.Client(
+                project=settings.bigquery.bq_project_id,
+                credentials=credentials,
+            )
+        else:
+            # Cloud Run automatically provides credentials via metadata server
+            self.client = bigquery.Client(project=settings.bigquery.bq_project_id)
+
         self.dataset_id = settings.bigquery.bq_dataset_id
         self.project_id = settings.bigquery.bq_project_id
 
