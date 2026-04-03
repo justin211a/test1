@@ -47,6 +47,27 @@ class MetaChannel(BaseChannel):
             app_secret=settings.meta.meta_app_secret,
             access_token=settings.meta.meta_access_token,
         )
+        self._account_currency: dict[str, str] = {}
+
+    def _detect_account_currency(self, account_id: str) -> str:
+        """Detect the currency of a Meta ad account via REST API."""
+        if account_id in self._account_currency:
+            return self._account_currency[account_id]
+        try:
+            import requests as req
+            settings = get_settings()
+            url = f"https://graph.facebook.com/v22.0/{account_id}"
+            params = {"access_token": settings.meta.meta_access_token, "fields": "currency"}
+            resp = req.get(url, params=params, timeout=15)
+            resp.raise_for_status()
+            currency = resp.json().get("currency", "KRW")
+            self._account_currency[account_id] = currency
+            logger.info(f"Meta account {account_id} currency: {currency}")
+            return currency
+        except Exception as e:
+            logger.warning(f"Failed to detect currency for {account_id}, defaulting to KRW: {e}")
+            self._account_currency[account_id] = "KRW"
+            return "KRW"
 
     @property
     def default_rate_limit(self) -> float:
@@ -117,10 +138,14 @@ class MetaChannel(BaseChannel):
                     conversion_value += self._safe_float(av.get("value"))
 
             spend = self._safe_float(row.get("spend"))
-            # Meta reports in account currency (usually USD for international accounts)
-            cost_currency = "USD"  # Default; will be overridden if account is KRW
-            exchange_rate = get_exchange_rate(cost_currency, report_date)
-            cost_krw = spend * exchange_rate
+            # Detect account currency (Korean accounts typically use KRW)
+            cost_currency = self._detect_account_currency(account_id)
+            if cost_currency == "KRW":
+                exchange_rate = 1.0
+                cost_krw = spend
+            else:
+                exchange_rate = get_exchange_rate(cost_currency, report_date)
+                cost_krw = spend * exchange_rate
 
             campaign_id = row.get("campaign_id", "")
             adset_id = row.get("adset_id", "")
