@@ -53,6 +53,8 @@ class NaverSAChannel(BaseChannel):
         self.rate_limiter.wait()
         headers = get_naver_sa_headers("GET", uri, customer_id, self._api_key, self._secret_key)
         resp = requests.get(f"{NAVER_SA_BASE_URL}{uri}", headers=headers, params=params, timeout=30)
+        if not resp.ok:
+            logger.error(f"Naver SA API error: {resp.status_code} {resp.text}")
         resp.raise_for_status()
         return resp.json()
 
@@ -118,21 +120,28 @@ class NaverSAChannel(BaseChannel):
         while time.time() - start < timeout:
             result = self._api_get(f"/stat-reports/{report_id}", customer_id)
             status = result.get("status")
+            logger.info(f"Naver SA: poll response: {result}")
 
             if status == "BUILT":
-                download_url = result.get("reportFileUrl")
+                download_url = result.get("reportFileUrl") or result.get("downloadUrl")
                 logger.info(f"Naver SA: report ready, URL: {download_url}")
+                if not download_url:
+                    raise RuntimeError(f"Naver SA report BUILT but no download URL in response: {result}")
                 return download_url
-            elif status == "REGIST" or status == "RUNNING":
+            elif status in ("REGIST", "RUNNING"):
                 time.sleep(10)
+            elif status == "NONE":
+                logger.warning(f"Naver SA: report status NONE (no data for period)")
+                return None
             else:
                 raise RuntimeError(f"Naver SA report failed with status: {status}")
 
         raise TimeoutError(f"Naver SA report {report_id} timed out after {timeout}s")
 
-    def _download_report(self, download_url: str) -> list[dict]:
+    def _download_report(self, download_url: str, customer_id: str) -> list[dict]:
         """Step 3: Download and parse TSV report."""
-        resp = requests.get(download_url, timeout=60)
+        headers = get_naver_sa_headers("GET", "/report-download", customer_id, self._api_key, self._secret_key)
+        resp = requests.get(download_url, headers=headers, timeout=60)
         resp.raise_for_status()
 
         # Naver SA reports are TSV encoded in EUC-KR or UTF-8
@@ -165,7 +174,10 @@ class NaverSAChannel(BaseChannel):
         # Create and download stat report
         report_id = self._create_stat_report(account_id, date_start, date_end)
         download_url = self._poll_report_status(account_id, report_id)
-        raw_rows = self._download_report(download_url)
+        if download_url is None:
+            logger.info(f"Naver SA: no report data for {account_id} ({date_start} ~ {date_end})")
+            return []
+        raw_rows = self._download_report(download_url, account_id)
 
         records = []
         for row in raw_rows:

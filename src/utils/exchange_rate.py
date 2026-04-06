@@ -34,7 +34,7 @@ def _fetch_exchange_rates_from_api(search_date: date) -> dict[str, float]:
         "data": "AP01",
     }
 
-    resp = requests.get(KOREAEXIM_API_URL, params=params, timeout=15)
+    resp = requests.get(KOREAEXIM_API_URL, params=params, timeout=15, verify=False)
     resp.raise_for_status()
     data = resp.json()
 
