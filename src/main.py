@@ -102,6 +102,47 @@ async def ingest_csv(request: Request, x_api_key: str = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/run")
+async def run_pipeline_api(request: Request, x_api_key: str = Header(None)):
+    """Trigger pipeline run via HTTP (for remote execution)."""
+    from src.config import get_settings
+
+    settings = get_settings()
+    if settings.app.ingest_api_key and x_api_key != settings.app.ingest_api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    body = await request.json()
+    channel_name = body.get("channel")
+    date_start = body.get("date_start")
+    date_end = body.get("date_end")
+
+    from src.pipeline import run_all_channels, run_channel
+
+    d_end = date.fromisoformat(date_end) if date_end else date.today() - timedelta(days=1)
+    d_start = date.fromisoformat(date_start) if date_start else d_end - timedelta(days=settings.app.backfill_days - 1)
+
+    if channel_name:
+        result = run_channel(channel_name, d_start, d_end)
+        return {
+            "channel": result.channel,
+            "status": result.status.value,
+            "rows_loaded": result.rows_loaded,
+            "error": result.error_message,
+            "date_range": f"{d_start} ~ {d_end}",
+        }
+    else:
+        results = run_all_channels(d_start, d_end)
+        return [
+            {
+                "channel": r.channel,
+                "status": r.status.value,
+                "rows_loaded": r.rows_loaded,
+                "error": r.error_message,
+            }
+            for r in results
+        ]
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
