@@ -112,6 +112,48 @@ def notify_token_expiry_warning(channel: str, days_remaining: int):
     send_email_alert(subject=f"{channel} 토큰 만료 경고 ({days_remaining}일 남음)", body=body)
 
 
+def send_html_email(subject: str, html_body: str, to: str = "", cc: str = "") -> bool:
+    """Send an HTML email via SMTP.
+
+    Args:
+        subject: Email subject.
+        html_body: Email body (HTML).
+        to: Recipient(s), comma-separated. Falls back to alert_email_to.
+        cc: CC recipient(s), comma-separated.
+
+    Returns:
+        True if sent successfully, False otherwise.
+    """
+    settings = get_settings()
+    recipient = to or settings.report.report_email_to or settings.alert.alert_email_to
+    if not settings.alert.smtp_user or not recipient:
+        logger.warning("Email settings not configured. Skipping HTML email.")
+        return False
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = settings.alert.smtp_user
+    msg["To"] = recipient
+    if cc:
+        msg["Cc"] = cc
+    msg["Subject"] = f"[마케팅 파이프라인] {subject}"
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    all_recipients = [r.strip() for r in recipient.split(",")]
+    if cc:
+        all_recipients += [r.strip() for r in cc.split(",")]
+
+    try:
+        with smtplib.SMTP(settings.alert.smtp_host, settings.alert.smtp_port) as server:
+            server.starttls()
+            server.login(settings.alert.smtp_user, settings.alert.smtp_password)
+            server.sendmail(settings.alert.smtp_user, all_recipients, msg.as_string())
+        logger.info(f"HTML email sent: {subject}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send HTML email: {e}")
+        return False
+
+
 def notify_data_anomaly(channel: str, report_date: str, today_count: int, prev_count: int):
     """Notify about abnormal data volume change (Slack only)."""
     change_pct = ((today_count - prev_count) / prev_count * 100) if prev_count else 0

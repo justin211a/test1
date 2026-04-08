@@ -111,6 +111,13 @@ class AlertConfig(_EnvBase):
     alert_email_to: str = ""
 
 
+class ReportConfig(_EnvBase):
+    report_email_to: str = ""
+    report_email_cc: str = ""
+    weekly_report_day: int = 0  # 0=Monday
+    top_campaigns_count: int = 5
+
+
 class AppConfig(_EnvBase):
     timezone: str = "Asia/Seoul"
     log_level: str = "INFO"
@@ -129,6 +136,7 @@ class Settings:
         self.naver_sa = NaverSAConfig()
         self.bigquery = BigQueryConfig()
         self.alert = AlertConfig()
+        self.report = ReportConfig()
 
 
 _settings: Optional[Settings] = None

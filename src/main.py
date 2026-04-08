@@ -143,6 +143,34 @@ async def run_pipeline_api(request: Request, x_api_key: str = Header(None)):
         ]
 
 
+@app.post("/api/reports/weekly")
+async def weekly_report_api(request: Request, x_api_key: str = Header(None)):
+    """Generate and send the weekly marketing performance report."""
+    from src.config import get_settings
+
+    settings = get_settings()
+    if settings.app.ingest_api_key and x_api_key != settings.app.ingest_api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    body = await request.json() if await request.body() else {}
+    week_end_str = body.get("week_end")
+    dry_run = body.get("dry_run", False)
+
+    try:
+        from src.reporting import generate_weekly_report, send_weekly_report
+
+        w_end = date.fromisoformat(week_end_str) if week_end_str else None
+        report = generate_weekly_report(w_end)
+        result = send_weekly_report(report, dry_run=dry_run)
+
+        if dry_run:
+            return {"status": "dry_run", "html_length": len(result), "week": f"{report.week_start} ~ {report.week_end}"}
+        return {"status": "sent" if result else "send_failed", "week": f"{report.week_start} ~ {report.week_end}"}
+    except Exception as e:
+        logging.error(f"Weekly report error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -182,6 +210,31 @@ def run(channel: str | None, date_start: str | None, date_end: str | None):
         results = run_all_channels(d_start, d_end)
         for r in results:
             click.echo(f"{r.channel}: {r.status.value} | Rows: {r.rows_loaded}")
+
+
+@cli.command("weekly-report")
+@click.option("--week-end", type=str, default=None, help="End date of report week (YYYY-MM-DD, defaults to last Sunday)")
+@click.option("--dry-run", is_flag=True, help="Generate report without sending, save HTML to file")
+def weekly_report(week_end: str | None, dry_run: bool):
+    """Generate and send the weekly marketing performance report."""
+    from src.reporting import generate_weekly_report, send_weekly_report
+
+    w_end = date.fromisoformat(week_end) if week_end else None
+    click.echo("주간 보고서 생성 중...")
+    report = generate_weekly_report(w_end)
+    click.echo(f"기간: {report.week_start} ~ {report.week_end}")
+
+    result = send_weekly_report(report, dry_run=dry_run)
+
+    if dry_run:
+        output_path = f"weekly_report_{report.week_start}_{report.week_end}.html"
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(result)
+        click.echo(f"HTML 보고서 저장: {output_path}")
+    elif result:
+        click.echo("보고서 발송 완료")
+    else:
+        click.echo("보고서 발송 실패 (이메일 설정 확인 필요)")
 
 
 @cli.command()

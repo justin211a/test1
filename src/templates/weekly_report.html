@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주간 마케팅 성과 보고서</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#2c3e50;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;">
+<tr><td align="center" style="padding:20px 10px;">
+
+<!-- Container -->
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+<!-- Header -->
+<tr>
+<td style="background:linear-gradient(135deg,#2c3e50,#3498db);padding:28px 32px;border-radius:8px 8px 0 0;">
+  <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">주간 마케팅 성과 보고서</h1>
+  <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
+    {{ report.week_start.strftime('%Y년 %m월 %d일') }} ~ {{ report.week_end.strftime('%Y년 %m월 %d일') }}
+    <span style="margin-left:12px;opacity:0.7;">(전주: {{ report.prev_week_start.strftime('%m/%d') }}~{{ report.prev_week_end.strftime('%m/%d') }})</span>
+  </p>
+</td>
+</tr>
+
+<!-- Summary Cards -->
+<tr>
+<td style="padding:24px 32px 8px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="25%" style="padding:0 6px 0 0;">
+      <div style="background:#f8f9fa;border-radius:8px;padding:16px;text-align:center;border-left:4px solid #3498db;">
+        <div style="font-size:11px;color:#7f8c8d;margin-bottom:4px;">총 비용</div>
+        <div style="font-size:18px;font-weight:700;color:#2c3e50;">{{ report.total_summary.cost | krw }}원</div>
+        <div style="font-size:11px;margin-top:4px;">{{ report.total_summary.cost_wow | wow_arrow }}</div>
+      </div>
+    </td>
+    <td width="25%" style="padding:0 6px;">
+      <div style="background:#f8f9fa;border-radius:8px;padding:16px;text-align:center;border-left:4px solid #2ecc71;">
+        <div style="font-size:11px;color:#7f8c8d;margin-bottom:4px;">총 클릭</div>
+        <div style="font-size:18px;font-weight:700;color:#2c3e50;">{{ "{:,}".format(report.total_summary.clicks) }}</div>
+        <div style="font-size:11px;margin-top:4px;">{{ report.total_summary.clicks_wow | wow_arrow }}</div>
+      </div>
+    </td>
+    <td width="25%" style="padding:0 6px;">
+      <div style="background:#f8f9fa;border-radius:8px;padding:16px;text-align:center;border-left:4px solid #e67e22;">
+        <div style="font-size:11px;color:#7f8c8d;margin-bottom:4px;">총 전환</div>
+        <div style="font-size:18px;font-weight:700;color:#2c3e50;">{{ "{:,.0f}".format(report.total_summary.conversions) }}</div>
+        <div style="font-size:11px;margin-top:4px;">{{ report.total_summary.conversions_wow | wow_arrow }}</div>
+      </div>
+    </td>
+    <td width="25%" style="padding:0 0 0 6px;">
+      <div style="background:#f8f9fa;border-radius:8px;padding:16px;text-align:center;border-left:4px solid #9b59b6;">
+        <div style="font-size:11px;color:#7f8c8d;margin-bottom:4px;">ROAS</div>
+        <div style="font-size:18px;font-weight:700;color:#2c3e50;">{{ "%.2f" | format(report.total_summary.roas) }}</div>
+        <div style="font-size:11px;margin-top:4px;">{{ report.total_summary.roas_wow | wow_arrow }}</div>
+      </div>
+    </td>
+  </tr>
+  </table>
+</td>
+</tr>
+
+<!-- Channel Performance Table -->
+<tr>
+<td style="padding:20px 32px 8px;">
+  <h2 style="margin:0 0 12px;font-size:16px;color:#2c3e50;border-bottom:2px solid #3498db;padding-bottom:8px;">채널별 성과</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+    <thead>
+    <tr style="background:#f8f9fa;">
+      <th style="padding:10px 8px;text-align:left;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">채널</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">노출수</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">클릭수</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">비용(원)</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">CTR</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">전환</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">ROAS</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">비용 WoW</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for ch in report.channel_summaries %}
+    <tr style="{% if loop.index is odd %}background:#fafbfc;{% endif %}">
+      <td style="padding:10px 8px;font-size:13px;font-weight:600;border-bottom:1px solid #ecf0f1;">{{ ch.channel_label }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ "{:,}".format(ch.impressions) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ "{:,}".format(ch.clicks) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ ch.cost | krw }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ "%.2f%%" | format(ch.ctr * 100) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ "{:,.0f}".format(ch.conversions) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid #ecf0f1;">{{ "%.2f" | format(ch.roas) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;border-bottom:1px solid #ecf0f1;">{{ ch.cost_wow | wow_arrow }}</td>
+    </tr>
+    {% endfor %}
+    <!-- Total Row -->
+    <tr style="background:#eaf2f8;font-weight:700;">
+      <td style="padding:10px 8px;font-size:13px;border-top:2px solid #3498db;">{{ report.total_summary.channel_label }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-top:2px solid #3498db;">{{ "{:,}".format(report.total_summary.impressions) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-top:2px solid #3498db;">{{ "{:,}".format(report.total_summary.clicks) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-top:2px solid #3498db;">{{ report.total_summary.cost | krw }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-top:2px solid #3498db;">{{ "%.2f%%" | format(report.total_summary.ctr * 100) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-top:2px solid #3498db;">{{ "{:,.0f}".format(report.total_summary.conversions) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-top:2px solid #3498db;">{{ "%.2f" | format(report.total_summary.roas) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;border-top:2px solid #3498db;">{{ report.total_summary.cost_wow | wow_arrow }}</td>
+    </tr>
+    </tbody>
+  </table>
+</td>
+</tr>
+
+<!-- Top Campaigns -->
+{% if report.top_campaigns %}
+<tr>
+<td style="padding:20px 32px 8px;">
+  <h2 style="margin:0 0 12px;font-size:16px;color:#2c3e50;border-bottom:2px solid #e67e22;padding-bottom:8px;">비용 상위 캠페인 TOP {{ report.top_campaigns | length }}</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+    <thead>
+    <tr style="background:#f8f9fa;">
+      <th style="padding:10px 8px;text-align:center;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;width:30px;">#</th>
+      <th style="padding:10px 8px;text-align:left;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">채널</th>
+      <th style="padding:10px 8px;text-align:left;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">캠페인명</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">비용(원)</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">전환</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">ROAS</th>
+      <th style="padding:10px 8px;text-align:right;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">비용 WoW</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for camp in report.top_campaigns %}
+    <tr style="{% if loop.index is odd %}background:#fafbfc;{% endif %}">
+      <td style="padding:10px 8px;text-align:center;font-size:13px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">{{ loop.index }}</td>
+      <td style="padding:10px 8px;font-size:12px;color:#7f8c8d;border-bottom:1px solid #ecf0f1;">{{ camp.channel_label }}</td>
+      <td style="padding:10px 8px;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ camp.campaign_name }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ camp.cost | krw }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;border-bottom:1px solid #ecf0f1;">{{ "{:,.0f}".format(camp.conversions) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid #ecf0f1;">{{ "%.2f" | format(camp.roas) }}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;border-bottom:1px solid #ecf0f1;">{{ camp.cost_wow | wow_arrow }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</td>
+</tr>
+{% endif %}
+
+<!-- Anomalies -->
+{% if report.anomalies %}
+<tr>
+<td style="padding:20px 32px 8px;">
+  <div style="background:#fef9e7;border-left:4px solid #f39c12;border-radius:4px;padding:16px;">
+    <h3 style="margin:0 0 8px;font-size:14px;color:#e67e22;">이상 감지 항목</h3>
+    {% for anomaly in report.anomalies %}
+    <p style="margin:4px 0;font-size:13px;color:#7d6608;">{{ anomaly }}</p>
+    {% endfor %}
+  </div>
+</td>
+</tr>
+{% endif %}
+
+<!-- Pipeline Health -->
+{% if report.pipeline_health %}
+<tr>
+<td style="padding:12px 32px 8px;">
+  <div style="background:#fdedec;border-left:4px solid #e74c3c;border-radius:4px;padding:16px;">
+    <h3 style="margin:0 0 8px;font-size:14px;color:#c0392b;">파이프라인 이슈</h3>
+    {% for issue in report.pipeline_health %}
+    <p style="margin:4px 0;font-size:13px;color:#922b21;">{{ issue }}</p>
+    {% endfor %}
+  </div>
+</td>
+</tr>
+{% endif %}
+
+<!-- Meeting Agenda -->
+<tr>
+<td style="padding:20px 32px 8px;">
+  <h2 style="margin:0 0 12px;font-size:16px;color:#2c3e50;border-bottom:2px solid #2ecc71;padding-bottom:8px;">주간 회의 아젠다 (권장 40분)</h2>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+    <tr style="background:#f0faf0;">
+      <td style="padding:12px;width:80px;font-size:13px;font-weight:700;color:#27ae60;border-bottom:1px solid #e8f8e8;">10분</td>
+      <td style="padding:12px;font-size:13px;border-bottom:1px solid #e8f8e8;">
+        <strong>핵심 수치 리뷰</strong><br>
+        <span style="color:#7f8c8d;font-size:12px;">위 보고서 기반 채널별 주간 성과 확인. 이상 감지 항목 중심 논의.</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:12px;font-size:13px;font-weight:700;color:#27ae60;border-bottom:1px solid #e8f8e8;">15분</td>
+      <td style="padding:12px;font-size:13px;border-bottom:1px solid #e8f8e8;">
+        <strong>채널별 이슈 & 액션 아이템</strong><br>
+        <span style="color:#7f8c8d;font-size:12px;">각 담당자별 금주 주요 이슈, 해결 사항, 필요 지원 공유.</span>
+      </td>
+    </tr>
+    <tr style="background:#f0faf0;">
+      <td style="padding:12px;font-size:13px;font-weight:700;color:#27ae60;border-bottom:1px solid #e8f8e8;">10분</td>
+      <td style="padding:12px;font-size:13px;border-bottom:1px solid #e8f8e8;">
+        <strong>다음 주 계획 & 예산 조정</strong><br>
+        <span style="color:#7f8c8d;font-size:12px;">차주 캠페인 계획, 예산 배분 변경, 새 캠페인 론칭 여부.</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:12px;font-size:13px;font-weight:700;color:#27ae60;">5분</td>
+      <td style="padding:12px;font-size:13px;">
+        <strong>기타 논의</strong><br>
+        <span style="color:#7f8c8d;font-size:12px;">긴급 안건 또는 다음 회의까지 확인 필요 사항.</span>
+      </td>
+    </tr>
+  </table>
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="padding:20px 32px 28px;">
+  <div style="border-top:1px solid #ecf0f1;padding-top:16px;text-align:center;">
+    <p style="margin:0;font-size:11px;color:#bdc3c7;">
+      이 보고서는 자동으로 생성되었습니다. | 생성 시각: {{ now }} (KST)<br>
+      데이터 출처: BigQuery (novatra-test.marketing_data) | 주식회사 테라바이오텍코리아
+    </p>
+  </div>
+</td>
+</tr>
+
+</table>
+<!-- /Container -->
+
+</td></tr>
+</table>
+</body>
+</html>
